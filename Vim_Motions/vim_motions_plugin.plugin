@@ -1,0 +1,8 @@
+[Plugin]
+Loader=python3
+Module=vim_motions_plugin
+IAge=3
+Name=Vim Motions
+Description=A Plugin to emulate basic Vim motions
+Authors=Andrew O'Shei <andrewoshei@gmail.com>
+
