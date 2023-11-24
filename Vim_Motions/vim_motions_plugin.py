@@ -55,19 +55,47 @@ class VimMotionPlugin(GObject.Object, Gedit.ViewActivatable):
 
         if self.vim_mode:
             shift_pressed = state & Gdk.ModifierType.SHIFT_MASK
-            return self.handle_vim_mode(keyval, shift_pressed)
+            ctrl_pressed = Gdk.ModifierType.CONTROL_MASK & event.state
+            return self.handle_vim_mode(keyval, shift_pressed, ctrl_pressed)
         else:
             return False
 
-    def handle_vim_mode(self, keyval, shift_pressed):
+    def handle_vim_mode(self, keyval, shift_pressed, ctrl_pressed):
         buffer = self.view.get_buffer()
 
-        if keyval == 'I' or (keyval == 'i' and shift_pressed):
+        if keyval == '0':
+            self.move_cursor_to_line_start()
+            return True
+        elif keyval == '^':
+            self.move_cursor_to_first_non_blank_character()
+            return True
+        elif keyval == 'G':
+            self.move_cursor_to_last_line()
+            return True
+        elif ctrl_pressed and keyval == 'f':
+            self.scroll_page('down', full_page=True)
+            return True
+        elif ctrl_pressed and keyval == 'd':
+            self.scroll_page('down', full_page=False)
+            return True
+        elif ctrl_pressed and keyval == 'u':
+            self.scroll_page('up', full_page=False)
+            return True
+        elif ctrl_pressed and keyval == 'b':
+            self.scroll_page('up', full_page=True)
+            return True
+        elif keyval == 'g':
+            # Implement logic to detect 'gg' sequence
+            return True
+        elif keyval == '$':
+            self.move_cursor_to_line_end()
+            return True
+        elif keyval == 'I':
             self.move_cursor_to_line_start()
             self.vim_mode = False
             self.update_status_bar(self.vim_mode)
             return True
-        elif keyval == 'A' or (keyval == 'a' and shift_pressed):
+        elif keyval == 'A':
             self.move_cursor_to_line_end()
             self.vim_mode = False
             self.update_status_bar(self.vim_mode)
@@ -89,7 +117,7 @@ class VimMotionPlugin(GObject.Object, Gedit.ViewActivatable):
         elif keyval in ['h', 'j', 'k', 'l']:
             count = int(self.numeric_input) if self.numeric_input else 1
             self.move_cursor(buffer, keyval, count)
-            self.numeric_input = ''  # Reset numeric input after motion
+            self.numeric_input = ''
             return True
 
         return False
@@ -127,4 +155,27 @@ class VimMotionPlugin(GObject.Object, Gedit.ViewActivatable):
         if not iter.ends_line():
             iter.forward_char()
         buffer.place_cursor(iter)
+
+    def move_cursor_to_first_non_blank_character(self):
+        buffer = self.view.get_buffer()
+        iter = buffer.get_iter_at_mark(buffer.get_insert())
+        iter.set_line_offset(0)
+        while iter.get_char().isspace() and not iter.ends_line():
+            iter.forward_char()
+        buffer.place_cursor(iter)
+
+    def move_cursor_to_last_line(self):
+        buffer = self.view.get_buffer()
+        iter = buffer.get_end_iter()
+        buffer.place_cursor(iter)
+
+    def scroll_page(self, direction, full_page):
+        adjustment = self.view.get_vadjustment()
+        page_size = adjustment.get_page_size()
+        if not full_page:
+            page_size /= 2
+        if direction == 'up':
+            adjustment.set_value(adjustment.get_value() - page_size)
+        else:
+            adjustment.set_value(adjustment.get_value() + page_size)
 
